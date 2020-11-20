@@ -3,16 +3,19 @@ import pandas as pd
 from geopy.geocoders import Nominatim
 import requests
 from bs4 import BeautifulSoup
-
+import time
 
 def coordinate(address):
     payload = {'q': address}
     html = requests.get(URL, params=payload)
     soup = BeautifulSoup(html.content, "html.parser")
     if soup.find('error'):
-        raise ValueError(f"Invalid address submitted. {address}")
-    latitude = soup.find('lat').string
-    longitude = soup.find('lng').string
+        # raise ValueError(f"Invalid address submitted. {address}")
+        latitude = None
+        longitude = None        
+    else:
+        latitude = soup.find('lat').string
+        longitude = soup.find('lng').string
     return (latitude, longitude)
 
 
@@ -25,10 +28,16 @@ def coordinates(addresses, interval=10, progress=True):
 
 
 URL = 'http://www.geocoding.jp/api/'    
-cvs_addresses = pd.read_csv('tokyo.csv', header=None, encoding='SJIS', names=['name', 'address'])
-cvs_addresses['LATLNG']=None
-for i, r in cvs_addresses.iterrows():
-  cvs_addresses.at[cvs_addresses.index[i], 'LATLNG'] = coordinate(r.address)
+cvs_mst = pd.read_csv('00001_m_store.csv', header=0, encoding='cp932')
+
+for i, r in cvs_mst.iterrows():
+    if r.GEO_LOCATION_LAT != r.GEO_LOCATION_LAT or r.GEO_LOCATION_LNG != r.GEO_LOCATION_LNG:
+        latlng = coordinate('セブンイレブン' + r.STORE_NAME_KANJI)
+        cvs_mst.at[cvs_mst.index[i], 'GEO_LOCATION_LAT'] = latlng[0]
+        cvs_mst.at[cvs_mst.index[i], 'GEO_LOCATION_LNG'] = latlng[1]
+        time.sleep(10)
+pd.to_csv('00001_m_stores.csv')
+
 
 '''
 geolocator = Nominatim(user_agent='geopy_test')
